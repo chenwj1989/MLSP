@@ -6,19 +6,21 @@ def scale_data(Y):
     #Y: [N*D]
     #N: number of data points
     #D: dimension of data
+    X = np.zeros(Y.shape)
     for i in range(Y.shape[1]):
         max_ = Y[:, i].max()
         min_ = Y[:, i].min()
-        Y[:, i] = (Y[:, i] - min_) / (max_ - min_)
+        X[:, i] = (Y[:, i] - min_) / (max_ - min_)
 
-    return Y
+    return X
 
 def gaussian(X, mu_k, cov_k):
     norm = multivariate_normal(mean=mu_k, cov=cov_k)
     return norm.pdf(X)
 
-def gmm_em(X, K, iters):
-    X = scale_data(X)
+def gmm_em(Y, K, iters):
+    #X = scale_data(Y)
+    X = Y
     N, D = X.shape
     #Init
     alpha = np.ones((K,1)) / K          #initially evenly distributed
