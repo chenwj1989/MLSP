@@ -25,7 +25,7 @@ alpha1 = n1/N
 alpha2 = n2/N
 alpha3 = n3/N
 
-Y = np.zeros((N, D))
+
 sample1 = np.random.multivariate_normal(mean=mu1, cov=cov1, size=n1)
 sample2 = np.random.multivariate_normal(mean=mu2, cov=cov2, size=n2)
 sample3 = np.random.multivariate_normal(mean=mu3, cov=cov3, size=n3)
