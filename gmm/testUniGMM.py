@@ -9,15 +9,15 @@ D = 1 # 2d data
 K = 3 # 3 mixtures
 
 #1:
-n1 = 100
+n1 = 70
 mu1 = [0]
 sigma2_1 = [[0.3]]
 #2:
-n2 = 300
+n2 = 150
 mu2 = [2]
 sigma2_2  = [[0.2]]
 #3:
-n3 = 200
+n3 = 100
 mu3 = [4]
 sigma2_3  = [[0.3]]
 
@@ -50,8 +50,8 @@ log_dens = kde.score_samples(Y_plot)
 ax.plot(Y_plot[:, 0], np.exp(log_dens), '-', label="input distribution".format(kernel))
 
 ax.set_xlim(-2, 6)
-plt.title("GMM Data")
 
+plt.show()
 
 omega, alpha, mu, cov = gmm_em(Y, K, 100)
 
@@ -69,6 +69,7 @@ ax.plot(class1[:, 0], -0.03 - 0.01 * np.random.random(class1.shape[0]), 'bo', la
 ax.plot(class2[:, 0], -0.03 - 0.01 * np.random.random(class2.shape[0]), 'ro', label="estimated class2")
 ax.plot(class3[:, 0], -0.03 - 0.01 * np.random.random(class3.shape[0]), 'go', label="estimated class3")
 plt.legend(loc="best")
+plt.title("GMM Data")
 plt.show()
 
 #Errors:
