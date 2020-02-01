@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.linalg as la
-from numpy.fft import rfft, irfft
+from numpy.fft import fft, ifft
 
 class FBLMS():
     '''
@@ -13,7 +13,7 @@ class FBLMS():
         the length of the filter
     mu: float, optional
         the step size (default 0.01)
-    L: int, optional
+    B: int, optional
         block size (default is 1)
     nlms: bool, optional
         whether or not to normalize as in NLMS (default is False)
@@ -33,11 +33,9 @@ class FBLMS():
     def reset(self):
         self.n = 0
         self.d = np.zeros((self.B))
-        self.y = np.zeros((self.B))
-        self.e = np.zeros((self.B))
         self.x = np.zeros((self.B * 2))
         self.W = np.zeros((self.B * 2), dtype=complex)
-        #self.w = np.zeros((self.B))
+        self.w = np.zeros((self.B))
         
     def update(self, x_n, d_n):
         '''
@@ -52,39 +50,45 @@ class FBLMS():
         '''
         
         # Update the internal buffers
-        self.n += 1
         self.x[self.B+self.n] = x_n
         self.d[self.n] = d_n
+        self.n += 1
         
         # Block update
         if self.n % self.B == 0:
 
             # block-update parameters
-            X = rfft(self.x)
-            y_2B = irfft( X * self.W)
-            self.y = np.real(y_2B[self.B:])
+            X = fft(self.x)
+            y_2B = ifft( X * self.W)
+            y = y_2B[self.B:]
 
-            self.e = self.d - self.y
-            E = rfft(np.concatenate([np.zeros(self.B), self.e])) # (2B)
+            e = self.d - y
+            E = fft(np.concatenate([np.zeros(self.B), e])) # (2B)
             
             if self.nlms:
-                norm = la.norm(X, axis=1)**2
-                if self.B == 1:
-                    X = X/norm[0]
-                else:
-                    X = (X.T/norm).T
-                
+                norm = np.abs(X)**2
+                E = E/norm
+            # Set the upper bound of E, to prevent divergence
+            m_errThreshold = 0.2
+            Enorm = np.abs(E) # (2B)
+            # print(E)
+            for eidx in range(2*self.B):
+                if Enorm[eidx]>m_errThreshold:
+                    E[eidx] = m_errThreshold*E[eidx]/(Enorm[eidx]+1e-10) 
+
             # Compute the correlation vector (gradient constraint)
             phi = np.einsum('i,i->i',X.conj(),E) # (2B)
-            phi = irfft(phi)
+            phi = ifft(phi)
             phi[self.B:] = 0
+            phi = fft(phi)
                    
             # Update the parameters of the filter
-            self.W = self.W + self.mu*rfft(phi) 
-            #self.w = irfft(self.W)[:B] 
+            self.W = self.W + self.mu*phi
+            self.w = np.real(ifft(self.W)[:self.B]) 
             
             # sliding window
             self.n = 0
-            self.x = np.concatenate(self.x[self.B:], np.zeros(self.B))
+            self.x = np.concatenate([self.x[self.B:], np.zeros(self.B)])
             self.d = np.zeros((self.B))
+
         
