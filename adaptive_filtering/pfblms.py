@@ -96,7 +96,7 @@ class PFBLMS():
             E = fft(np.concatenate([np.zeros(self.B), e])) # (2B)
 
             if self.nlms:
-                norm = np.abs(Xf_b)**2
+                norm = np.abs(Xf_b)**2 + 1e-6
                 E = E/norm
 
             # Set the upper bound of E, to prevent divergence

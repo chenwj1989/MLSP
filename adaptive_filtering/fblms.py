@@ -17,6 +17,8 @@ class FBLMS():
         block size (default is 1)
     nlms: bool, optional
         whether or not to normalize as in NLMS (default is False)
+    constrained: bool, optional
+        whether or not grdient constraint applies (default is True)
     '''
     
     def __init__(self, mu=0.01, B=1, nlms=False, constrained=True):
@@ -33,6 +35,7 @@ class FBLMS():
     def reset(self):
         self.n = 0
         self.d = np.zeros((self.B))
+        self.xb = np.zeros((self.B))
         self.x = np.zeros((self.B * 2))
         self.W = np.zeros((self.B * 2), dtype=complex)
         self.w = np.zeros((self.B))
@@ -50,23 +53,44 @@ class FBLMS():
         '''
         
         # Update the internal buffers
-        self.x[self.B+self.n] = x_n
+        self.xb[self.n] = x_n
         self.d[self.n] = d_n
         self.n += 1
         
         # Block update
         if self.n % self.B == 0:
+            self.process(self.xb, self.d)
+            self.n =0
 
-            # block-update parameters
-            X = fft(self.x)
-            y_2B = ifft( X * self.W)
-            y = y_2B[self.B:]
 
-            e = self.d - y
+    def process(self, x_b, d_b, update=True): 
+        '''
+        Process a block data, and updates the adaptive filter (optional)
+
+        Parameters
+        ----------
+        x_b: float
+            the new input block signal
+        d_b: float
+            the new reference block signal
+        update: bool, optional
+            whether or not to update the filter coefficients
+        '''  
+        self.x = np.concatenate([self.x[self.B:], x_b])
+
+        # block-update parameters
+        X = fft(self.x)
+        y_2B = ifft( X * self.W)
+        y = np.real(y_2B[self.B:])
+
+        e = d_b - y
+
+        # Update the parameters of the filter
+        if self.update:
             E = fft(np.concatenate([np.zeros(self.B), e])) # (2B)
             
             if self.nlms:
-                norm = np.abs(X)**2
+                norm = np.abs(X)**2 + 1e-10
                 E = E/norm
             # Set the upper bound of E, to prevent divergence
             m_errThreshold = 0.2
@@ -81,14 +105,14 @@ class FBLMS():
             phi = ifft(phi)
             phi[self.B:] = 0
             phi = fft(phi)
-                   
-            # Update the parameters of the filter
+                
             self.W = self.W + self.mu*phi
             self.w = np.real(ifft(self.W)[:self.B]) 
-            
-            # sliding window
-            self.n = 0
-            self.x = np.concatenate([self.x[self.B:], np.zeros(self.B)])
-            self.d = np.zeros((self.B))
-
         
+        return y, e
+
+''' Alias : Fast LMS (FLMS) '''
+FLMS = FBLMS
+
+''' Alias : Frequency Domain Ddaptive Filter (FDAF) '''
+FDAF = FBLMS

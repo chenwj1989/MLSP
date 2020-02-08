@@ -10,21 +10,43 @@ from __future__ import division, print_function
 import numpy as np
 from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
+import soundfile as sf
 import pyroomacoustics as pra
 from fblms import FBLMS
 from pfblms import PFBLMS
 
 
 # parameters
-length = 128        # the unknown filter length
-n_samples = 10000   # the number of samples to run
+length = 2048        # the unknown filter length
 SNR = 15           # signal to noise ratio
 
-# the unknown filter (unit norm)
-w = np.random.randn(length)
-w /= np.linalg.norm(w)
+#Load far-end speech
+farspeech, fs = sf.read("./samples/farspeech.wav")
+n_samples = len(farspeech)
+
+# the Room Impulse Response
+# room dimension
+room_dim = [5, 4, 6]
+# Create the shoebox
+room = pra.ShoeBox(
+    room_dim,
+    absorption=0.0,
+    fs=fs,
+    max_order=15,
+    )
+# source and mic locations
+room.add_source([2, 2.5, 2], signal=farspeech)
+room.add_microphone_array(
+        pra.MicrophoneArray(
+            np.array([[2, 2, 2]]).T, 
+            room.fs)
+        )
+# run ism
+room.simulate()
+w = room.rir[0][0][:length]
 
 # create a known driving signal
+x = farspeech
 x = np.random.randn(n_samples)
 
 # convolve with the unknown filter
@@ -40,19 +62,19 @@ adfilt = dict(
         error=np.zeros(n_samples),
         ),
     blocklms=dict(
-        filter=pra.adaptive.BlockLMS(length, mu=1./128/2., L=128, nlms=False), 
+        filter=pra.adaptive.BlockLMS(length, mu=1./2., L=2048, nlms=True), 
         error=np.zeros(n_samples),
         ),
     fblms=dict(
-        filter=FBLMS(mu=1./8/2., B=128, nlms=False), 
+        filter=FBLMS(mu=1./32/2., B=2048, nlms=False), 
         error=np.zeros(n_samples),
         ),
     fblms_nlms=dict(
-        filter=FBLMS(mu=1./2., B=128, nlms=True), 
+        filter=FBLMS(mu=1./4/2., B=2048, nlms=True), 
         error=np.zeros(n_samples),
         ),
     pfblms=dict(
-        filter=PFBLMS(mu=1./16/2., B=32, M=4, nlms=False), 
+        filter=PFBLMS(mu=1./2., B=64, M=32, nlms=True), 
         error=np.zeros(n_samples),
         ),
     )
